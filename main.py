@@ -22,12 +22,13 @@ def run_all_extractions():
     # print("Extracted AP Invoices Data:", ap_invoices_data)  # Debugging line
     # ap_payemnts_data = fetch_and_upload_if_changed(headers=headers,api_url = 'https://connect.plex.com/accounting/v1/ap-payments',cos_filename="ap-payments")
     suppliers_data=fetch_and_upload_if_changed(api_url="https://connect.plex.com/mdm/v1/suppliers",cos_filename="suppliers",headers=headers)
+    customer_data=fetch_and_upload_if_changed(api_url="https://connect.plex.com/mdm/v1/customers",cos_filename="customers",headers=headers)
     #count the number of invoices
     # print("Extracted AP Payments Data:", ap_payemnts_data)  # Debugging line
     # print(f"Number of AP Invoices: {len(ap_invoices_data)}")
     # print(f"Number of AP Payments: {len(ap_payemnts_data)}")   
     if  suppliers_data: 
-        print(f"Number of suppliers: {len(suppliers_data)}")
+        print(f"Number of suppliers_data: {len(suppliers_data)},\nNumber of customers_data:{len(customer_data)}")
     else:
         print(f"****Error Occur vayo!!!! Problem Problem****")
     
