@@ -1,0 +1,13 @@
+{
+  "ingestion_date": "2025-07-10T16:21:27.322538Z",
+  "count": 5066,
+  "response status": 200,
+  "response mesage": "OK",
+  "history": [
+    {
+      "timestamp": "2025-07-11T03:34:08.931026Z",
+      "extracted_count": 1
+    }
+  ],
+  "last_ingested": "2025-07-11T03:34:08.931026Z"
+}
