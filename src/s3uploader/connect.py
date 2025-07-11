@@ -1,4 +1,7 @@
-
+import os 
+import ibm_boto3
+# import json
+from ibm_botocore.client import Config
 def connect_to_cos():
     access_key = os.environ.get("IBM_ACCESS_KEY")
     secret_key = os.environ.get("IBM_SECRET_ACCESS_KEY") 
