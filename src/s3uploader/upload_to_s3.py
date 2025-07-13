@@ -1,6 +1,13 @@
 import s3uploader.connect as connect_to_cos
 import json
 import datetime
+import logging
+def initialize_ingestion_logging():
+    return logging.getLogger("ingestion_logger")
+
+def call_plex_api(api_url, cos_filename):
+    retunbrn_data = []
+    
 
 def fetch_and_upload(api_url, cos_filename):
     cos, bucket_name = connect_to_cos()

@@ -1,7 +1,9 @@
-from src.extractors.Accounts_Payable_Invoices_API.List_AP_Invoices import extract_list_ap_invoices
-from src.extractors.Accounts_Payable_Payments_API.List_AP_Payments import extract_list_ap_payments
-# from src.uploaders.s3_uploader import upload_to_s3
+from src.extractors.accounts.Accounts_Payable_Invoices_API.List_AP_Invoices import extract_list_ap_invoices
+from src.extractors.accounts.Accounts_Payable_Payments_API.List_AP_Payments import extract_list_ap_payments
+from src.extractors.accounts.Accounts_Receivable_Deposits_API.List_AR_Deposits import extract_list_ar_deposits
+from src.extractors.accounts.Accounts_Receivable_Invoices_API.LIST_AR_Invoice import extract_list_ar_invoices
 import config
+import concurrent.futures
 
 def get_common_headers():
     return {
@@ -12,18 +14,43 @@ def get_common_headers():
     }
 
 def run_all_extractions():
-    # Extract data from Get_AP_Invoices (existing)
     headers = get_common_headers()
-    ap_invoices_data = extract_list_ap_invoices(headers=headers,url = 'https://connect.plex.com/accounting/v1/ap-invoices')
-    # print("Extracted AP Invoices Data:", ap_invoices_data)  # Debugging line
-    ap_payemnts_data = extract_list_ap_payments(headers=headers,url = 'https://connect.plex.com/accounting/v1/ap-payments')
-    #count the number of invoices
-    # print("Extracted AP Payments Data:", ap_payemnts_data)  # Debugging line
-    print(f"Number of AP Invoices: {len(ap_invoices_data)}")
-    print(f"Number of AP Payments: {len(ap_payemnts_data)}")    # # # Upload to S3
-    
-    # upload_to_s3(ap_invoices_data, "ap-invoices.json")
+    print("Starting extraction of AP Invoices, Payments, AR Deposits, and AR Invoices...")
+
+    # Define tasks as tuples of (function, url)
+    tasks = [
+        # (extract_list_ap_invoices, 'https://connect.plex.com/accounting/v1/ap-invoices'),
+        # (extract_list_ap_payments, 'https://connect.plex.com/accounting/v1/ap-payments'),
+        (extract_list_ar_deposits, 'https://connect.plex.com/accounting/v1/ar-deposits')
+        # (extract_list_ar_invoices, 'https://connect.plex.com/accounting/v1/ar-invoices')
+    ]
+
+    results = {}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        # Submit all tasks to the executor
+        future_to_task = {
+            executor.submit(func, headers=headers, url=url): func.__name__
+            for func, url in tasks
+        }
+
+        # As each task completes, gather the result or exception
+        for future in concurrent.futures.as_completed(future_to_task):
+            func_name = future_to_task[future]
+            try:
+                data = future.result()
+                results[func_name] = data
+                print(f"{func_name} extracted {len(data)} records.")
+            except Exception as e:
+                print(f"Error running {func_name}: {e}")
+
+    # upload or further process the data here
+    # upload_to_s3(results['extract_list_ap_invoices'], "ap-invoices.json")
+
+    return results
+
 
 if __name__ == "__main__":
-    get_common_headers()
     run_all_extractions()
+
+    
