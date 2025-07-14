@@ -1,4 +1,4 @@
-from src.s3uploader.connect import connect_to_cos
+from src.s3uploader.connect_to_cos import connect_to_cos
 import json
 import datetime
 from src.s3uploader.extract_data import call_plex_api,check_for_changes
@@ -11,7 +11,7 @@ def fetch_and_upload_if_changed(api_url, cos_filename,headers):
         return None
     print(f"Changes detected for : {cos_filename}\n...Proceeding with extraction...")
     cos, bucket_name = connect_to_cos()
-    data = call_plex_api(api_url, cos_filename,headers=headers)
+    data = call_plex_api(api_url, cos_filename)
     if data :
         json_bytes = json.dumps(data, indent=2).encode("utf-8")
         # Create date-based folder structure with timestamp
