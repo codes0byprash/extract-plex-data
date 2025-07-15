@@ -25,7 +25,7 @@ def throttle():
     _last_request_time = time.time()
 def check_for_changes(api_url,cos_filename):
     """Check if there are any changes since last extraction"""
-    log_file = f"logs/extraction/{cos_filename}.json"
+    log_file = f"logs/extraction_logs/{cos_filename}/{cos_filename}.json"
     if not os.path.exists(log_file):
         print(f"No previous extraction log found for {cos_filename}. Will perform initial extraction.")
         return True
@@ -58,7 +58,7 @@ def check_for_changes(api_url,cos_filename):
 
 def call_plex_api(api_url, cos_filename):
     throttle()
-    log_file = f"logs/extraction/{cos_filename}.json"
+    log_file = f"logs/extraction_logs/{cos_filename}/{cos_filename}.json"
     if not os.path.exists(log_file):
         return call_first_call(api_url, cos_filename,headers)
     else:
@@ -82,11 +82,11 @@ def call_first_call(api_url, cos_filename,headers):
                 "response mesage": response.reason,
             }
             # cos_filename  = cos_filename
-            #create a folder logs/extraction if not exists
-            os.makedirs("logs/extraction/", exist_ok=True)
-            with open(f"logs/extraction/{cos_filename}.json", "w") as f:
+            #create a folder logs/extraction_logs if not exists
+            os.makedirs(f"logs/extraction_logs/{cos_filename}", exist_ok=True)
+            with open(f"logs/extraction_logs/{cos_filename}/{cos_filename}.json", "w") as f:
                 json.dump(log_data, f, indent=2)
-            print(f"Data logs to logs/extraction/{cos_filename}.json")
+            print(f"Data logs to logs/extraction_logs/{cos_filename}/{cos_filename}.json")
             return data
         else:
             print(f"No data ingested from {api_url}")
@@ -95,7 +95,7 @@ def call_first_call(api_url, cos_filename,headers):
 
 def incremental_call(api_url, cos_filename,headers):
     try:
-        log_file = f"logs/extraction/{cos_filename}.json"
+        log_file = f"logs/extraction_logs/{cos_filename}/{cos_filename}.json"
         if os.path.exists(log_file):
             with open(log_file, 'r') as f:
                 log_data = json.load(f)

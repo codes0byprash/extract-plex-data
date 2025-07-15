@@ -20,7 +20,7 @@ def get_common_headers():
 #     bom_urls=[f"https://connect.plex.com/mdm/v1/boms?partId={part_id}" for part_id in part_ids]
 #     return bom_urls
 def get_bom_urls(parts_data):
-    return [f"https://connect.plex.com/mdm/v1/boms?partId={part['id']}" for part in parts_data] if parts_data else []
+    return [(part["id"],f"https://connect.plex.com/mdm/v1/boms?partId={part['id']}") for part in parts_data] if parts_data else []
 DATA_SOURCES = [
     ("suppliers", "https://connect.plex.com/mdm/v1/suppliers"),
     ("customers", "https://connect.plex.com/mdm/v1/customers"),
@@ -32,7 +32,10 @@ DATA_SOURCES = [
     ("Fiscal-Periods-Statuses","https://connect.plex.com/accounting/v1/fiscal-period-statuses"),
     ("Charts-of-Accounts","https://connect.plex.com/mdm/v1/chart-of-accounts"),
     ("parts", "https://connect.plex.com/mdm/v1/parts"),
-    ("BOM",'{bom_urls}')
+    # ("BOM",f'{bom_urls}'),
+    ("Tenant_Directory","https://connect.plex.com/mdm/v1/tenants"),
+    ("Supply_Items","https://connect.plex.com/mdm/v1/supply-items")
+    # ("Transfer_Orders","https://connect.plex.com/shipping/v1-beta1/transfer-orders")
 ]
 
 def run_all_extractions():
@@ -47,15 +50,20 @@ def run_all_extractions():
         try:
             data = fetch_and_upload_if_changed(api_url=url, cos_filename=name,headers=headers)
             results[name] = data
+            #logic for parts in bom
             if name=="parts":
                 parts_data = data
         except Exception as e:
             print(f"Error processing {name}: {e}")
             results[name] = None
+    # logic for bom        
     if parts_data:
         bom_urls= get_bom_urls(parts_data)
-        for bom_url in bom_urls:
-            fetch_and_upload_if_changed(api_url=bom_url,cos_filename="bom")
+        for part_id,bom_url in bom_urls:
+            try:
+                fetch_and_upload_if_changed(api_url=bom_url,cos_filename=f"bom_{part_id}",headers=headers)
+            except Exception as e:
+                print(f"Error processing BOM for part {part_id}: {e}")
     any_data = False
     for name, data in results.items():
         if data:
