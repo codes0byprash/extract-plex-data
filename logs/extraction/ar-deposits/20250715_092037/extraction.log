@@ -1,0 +1,8 @@
+2025-07-15 09:20:37,182 - INFO - Logging initialized in logs\extraction\ar-deposits\20250715_092037
+2025-07-15 09:20:37,194 - INFO - Fetching from 2025-07-01T00:00:00.0000000Z to 2025-07-15T03:35:37.1830Z
+2025-07-15 09:20:37,195 - INFO - Using 1 thread for now (single interval)
+2025-07-15 09:20:37,196 - INFO - Requesting from 2025-07-01T00:00:00.0000Z to 2025-07-15T03:35:37.1830Z | Interval: 365 days
+2025-07-15 09:20:39,240 - INFO - API Status: 200
+2025-07-15 09:20:39,242 - INFO - Fetched 78 deposits.
+2025-07-15 09:20:39,248 - INFO - Total deposits fetched: 78
+2025-07-15 09:20:39,248 - ERROR - Unexpected error in extract_list_ar_deposits: save_extraction_metadata() missing 1 required positional argument: 'extraction_date'

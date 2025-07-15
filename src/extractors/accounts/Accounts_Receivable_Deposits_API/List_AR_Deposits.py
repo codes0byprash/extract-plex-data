@@ -99,12 +99,14 @@ def extract_list_ar_deposits(headers, url):
         # Determine start and end date for incremental fetch
         now = datetime.utcnow()
         modified_date_end = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "0Z"
+        
+        modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
 
-        last_extracted = load_last_extraction_time(log_dir)
-        if last_extracted:
-            modified_date_begin = last_extracted
-        else:
-            modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
+        # last_extracted = load_last_extraction_time(log_dir,resource_name)
+        # if last_extracted:
+        #     modified_date_begin = last_extracted
+        # else:
+        #     modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
 
         modified_parsed_date, extra_digit = parse_date(modified_date_begin)
         end_parsed_date, _ = parse_date(modified_date_end)
@@ -131,7 +133,7 @@ def extract_list_ar_deposits(headers, url):
                     logging.error(f"Failed to fetch for interval {start} to {end}: {e}")
 
         logging.info(f"Total deposits fetched: {len(all_ar_deposits)}")
-        save_extraction_metadata(log_dir, resource_name, len(all_ar_deposits))
+        save_extraction_metadata(log_dir, resource_name, len(all_ar_deposits),modified_date_end)
 
         if not all_ar_deposits:
             logging.warning("No deposits fetched. Exiting without saving outputs.")
