@@ -2,8 +2,14 @@ import logging
 import requests
 from datetime import datetime, timedelta,time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from logs.extractionlogger import setup_logging_for_url, save_extraction_outputs, save_extraction_metadata
 from src.extractors.accounts.utils import parse_date, build_date_str, generate_year_intervals
+from logs.extractionlogger import (
+    setup_logging_for_url,
+    save_extraction_outputs,
+    save_extraction_metadata,
+    load_last_extraction_time
+    # save_last_extraction_time
+)
 
 def fetch_invoices_for_interval(headers, url, start_date, end_date, extra_digit):
     current_start = start_date
@@ -86,18 +92,34 @@ def fetch_invoices_for_interval(headers, url, start_date, end_date, extra_digit)
 
 def extract_list_ap_invoices(headers, url):
     try:
-        log_dir = setup_logging_for_url(url)
+        outer_logs_dir,log_dir = setup_logging_for_url(url)
         resource_name = url.split('/')[-1] or "default"
 
-        modified_date_begin = "2025-07-01T00:00:00.0000000Z"
+        # Determine start and end date for incremental fetch
+        now = datetime.utcnow()
+        modified_date_end = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "0Z"
+        
+        # modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
+
+        last_extracted = load_last_extraction_time(outer_logs_dir,resource_name)
+        #if there is no change in the data received from the last extraction, we will not fetch the data again
+        if last_extracted:
+            modified_date_begin = last_extracted
+        else:
+            modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
+
         modified_parsed_date, extra_digit = parse_date(modified_date_begin)
-        intervals = generate_year_intervals(modified_date_begin)
+        end_parsed_date, _ = parse_date(modified_date_end)
+        
+        intervals = [(modified_parsed_date, end_parsed_date)]
+        logging.info(f"Fetching from {modified_date_begin} to {modified_date_end}")
 
-        logging.info(f"Intervals to fetch: {len(intervals)}")
-        logging.info(f"Intervals: {intervals}")
 
-        max_workers = min(7, max(1, len(intervals) // 2))
-        logging.info(f"Using {max_workers} threads for fetching invoices.")
+        
+        max_workers = min(7,max(1,len(intervals) // 2))
+   
+        
+   
 
         all_ap_invoices = []
 
@@ -114,17 +136,19 @@ def extract_list_ap_invoices(headers, url):
                     all_ap_invoices.extend(result)
                 except Exception as e:
                     logging.error(f"Failed to fetch for interval {start} to {end}: {e}")
-                    
+
         logging.info(f"Total invoices fetched: {len(all_ap_invoices)}")
-        save_extraction_metadata(log_dir, resource_name, len(all_ap_invoices))
-        logging.info(f"Saving extraction outputs for {resource_name}")
+        save_extraction_metadata(outer_logs_dir, resource_name, len(all_ap_invoices),modified_date_end)
+
         if not all_ap_invoices:
             logging.warning("No invoices fetched. Exiting without saving outputs.")
             return []
-        
+
         save_extraction_outputs(all_ap_invoices, log_dir, resource_name)
+        # save_last_extraction_time(outer_logs_dir, modified_date_end)
+        # print(f"✅ Successfully fetched {len(all_ap_invoices)} AR invoices.")
         return all_ap_invoices
 
     except Exception as e:
-        logging.error(f"Unexpected error in extract_list_ar_invoices: {e}")
+        logging.error(f"Unexpected error in extract_list_ap_invoices: {e}")
         return []

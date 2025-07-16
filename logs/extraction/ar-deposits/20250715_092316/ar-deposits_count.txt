@@ -1,1 +1,0 @@
-Total invoices fetched: 78

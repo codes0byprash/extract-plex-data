@@ -6,8 +6,8 @@ from logs.extractionlogger import (
     setup_logging_for_url,
     save_extraction_outputs,
     save_extraction_metadata,
-    load_last_extraction_time,
-    save_last_extraction_time,
+    load_last_extraction_time
+    # save_last_extraction_time
 )
 from src.extractors.accounts.utils import parse_date, build_date_str
 
@@ -33,7 +33,6 @@ def fetch_deposits_for_interval(headers, url, start_date, end_date, extra_digit)
             end_str = build_date_str(current_end, extra_digit)
 
             logging.info(f"Requesting from {begin_str} to {end_str} | Interval: {days} days")
-            print(f"url check: {url}")
 
             try:
                 response = requests.get(
@@ -93,32 +92,37 @@ def fetch_deposits_for_interval(headers, url, start_date, end_date, extra_digit)
 
 def extract_list_ar_deposits(headers, url):
     try:
-        log_dir = setup_logging_for_url(url)
+        outer_logs_dir,log_dir = setup_logging_for_url(url)
         resource_name = url.split('/')[-1] or "default"
 
         # Determine start and end date for incremental fetch
         now = datetime.utcnow()
         modified_date_end = now.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "0Z"
         
-        modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
+        # modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
 
-        # last_extracted = load_last_extraction_time(log_dir,resource_name)
-        # if last_extracted:
-        #     modified_date_begin = last_extracted
-        # else:
-        #     modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
+        last_extracted = load_last_extraction_time(outer_logs_dir,resource_name)
+        #if there is no change in the data received from the last extraction, we will not fetch the data again
+        if last_extracted:
+            modified_date_begin = last_extracted
+        else:
+            modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
 
         modified_parsed_date, extra_digit = parse_date(modified_date_begin)
         end_parsed_date, _ = parse_date(modified_date_end)
-
+        
+        
         intervals = [(modified_parsed_date, end_parsed_date)]
-
         logging.info(f"Fetching from {modified_date_begin} to {modified_date_end}")
-        logging.info(f"Using 1 thread for now (single interval)")
+        
+        max_workers = min(7,max(1,len(intervals) // 2))
+        # logging.info(f"Intervals")
+        
+   
 
         all_ar_deposits = []
 
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_range = {
                 executor.submit(fetch_deposits_for_interval, headers, url, start, end, extra_digit): (start, end)
                 for start, end in intervals
@@ -133,14 +137,15 @@ def extract_list_ar_deposits(headers, url):
                     logging.error(f"Failed to fetch for interval {start} to {end}: {e}")
 
         logging.info(f"Total deposits fetched: {len(all_ar_deposits)}")
-        save_extraction_metadata(log_dir, resource_name, len(all_ar_deposits),modified_date_end)
+        save_extraction_metadata(outer_logs_dir, resource_name, len(all_ar_deposits),modified_date_end)
 
         if not all_ar_deposits:
             logging.warning("No deposits fetched. Exiting without saving outputs.")
             return []
 
         save_extraction_outputs(all_ar_deposits, log_dir, resource_name)
-        save_last_extraction_time(log_dir, modified_date_end)
+        # save_last_extraction_time(outer_logs_dir, modified_date_end)
+        # print(f"✅ Successfully fetched {len(all_ar_deposits)} AR deposits.")
         return all_ar_deposits
 
     except Exception as e:
