@@ -1,78 +1,57 @@
-import os
-from dotenv import load_dotenv
-from src.extractors.supplier_API.list_suppliers import fetch_and_upload_if_changed
-
-load_dotenv()
+from src.extractors.accounts.Accounts_Payable_Invoices_API.List_AP_Invoices import extract_list_ap_invoices
+from src.extractors.accounts.Accounts_Payable_Payments_API.List_AP_Payments import extract_list_ap_payments
+from src.extractors.accounts.Accounts_Receivable_Deposits_API.List_AR_Deposits import extract_list_ar_deposits
+from src.extractors.accounts.Accounts_Receivable_Invoices_API.LIST_AR_Invoice import extract_list_ar_invoices
+from src.extractors.Transfer_Orders_API.Transfer_Orders import transfer_orders 
+from src.extractors.Tenant_Directory_API.List_Tenants import tenant_directory
+import config
+import concurrent.futures
 
 def get_common_headers():
     return {
-        'X-Plex-Connect-Api-Key': os.environ.get("X_PLEX_CONNECT_API_KEY"),
-        'X-Plex-Connect-Api-Secret': os.environ.get("X_PLEX_CONNECT_API_SECRET"),
-        'X-Plex-Connect-Customer-Id': os.environ.get("X_PLEX_CONNECT_CUSTOMER_ID"),
-        # 'X-Plex-Connect-Tenant-Id': os.environ.get("X_PLEX_CONNECT_TENANT_ID"),
+        'X-Plex-Connect-Api-Key': config.X_PLEX_CONNECT_API_KEY,
+        'X-Plex-Connect-Api-Secret': config.X_PLEX_CONNECT_API_SECRET,
+        'X-Plex-Connect-Customer-Id': config.X_PLEX_CONNECT_CUSTOMER_ID,
+        'X-Plex-Connect-Tenant-Id': config.X_PLEX_CONNECT_TENANT_ID,
     }
-# def get_part_id():
-#     parts_data=fetch_and_upload_if_changed(
-#         api_url="https://connect.plex.com/mdm/v1/parts",
-#         cos_filename="parts"
-#     )
-#     part_ids = [part['id'] for part in parts_data] if parts_data else []
-#     bom_urls=[f"https://connect.plex.com/mdm/v1/boms?partId={part_id}" for part_id in part_ids]
-#     return bom_urls
-def get_bom_urls(parts_data):
-    return [(part["id"],f"https://connect.plex.com/mdm/v1/boms?partId={part['id']}") for part in parts_data] if parts_data else []
-DATA_SOURCES = [
-    ("suppliers", "https://connect.plex.com/mdm/v1/suppliers"),
-    ("customers", "https://connect.plex.com/mdm/v1/customers"),
-    ("edi-units", "https://connect.plex.com/edi/v1/units"),
-    ("buildings", "https://connect.plex.com/mdm/v1/buildings"),
-    ("contacts", "https://connect.plex.com/mdm/v1/contacts"),
-    ("employees", "https://connect.plex.com/mdm/v1/employees"),
-    ("charts-of-accounts", "https://connect.plex.com/accounting/v1/charts-of-accounts"),
-    ("Fiscal-Periods-Statuses","https://connect.plex.com/accounting/v1/fiscal-period-statuses"),
-    ("Charts-of-Accounts","https://connect.plex.com/mdm/v1/chart-of-accounts"),
-    ("parts", "https://connect.plex.com/mdm/v1/parts"),
-    # ("BOM",f'{bom_urls}'),
-    ("Tenant_Directory","https://connect.plex.com/mdm/v1/tenants"),
-    ("Supply_Items","https://connect.plex.com/mdm/v1/supply-items")
-    # ("Transfer_Orders","https://connect.plex.com/shipping/v1-beta1/transfer-orders")
-]
 
 def run_all_extractions():
     headers = get_common_headers()
-    print(f"Headers being used: {headers}\n")
+    print("Starting extraction of AP Invoices, Payments, AR Deposits, and AR Invoices...")
+
+    # Define tasks as tuples of (function, url)
+    tasks = [
+        # (extract_list_ap_invoices, 'https://connect.plex.com/accounting/v1/ap-invoices'),
+        # (extract_list_ap_payments, 'https://connect.plex.com/accounting/v1/ap-payments'),
+        # (extract_list_ar_deposits, 'https://connect.plex.com/accounting/v1/ar-deposits'),
+        (transfer_orders, 'https://connect.plex.com/shipping/v1-beta1/transfer-orders'),
+        (tenant_directory,'https://connect.plex.com/mdm/v1/tenants')
+        # (extract_list_ar_invoices, 'https://connect.plex.com/accounting/v1/ar-invoices')
+    ]
+
     results = {}
-    parts_data=None
-    for name, url in DATA_SOURCES:
-        #skipping Bom for now
-        if name == "BOM":
-            continue
-        try:
-            data = fetch_and_upload_if_changed(api_url=url, cos_filename=name,headers=headers)
-            results[name] = data
-            #logic for parts in bom
-            if name=="parts":
-                parts_data = data
-        except Exception as e:
-            print(f"Error processing {name}: {e}")
-            results[name] = None
-    # logic for bom        
-    if parts_data:
-        bom_urls= get_bom_urls(parts_data)
-        for part_id,bom_url in bom_urls:
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        # Submit all tasks to the executor
+        future_to_task = {
+            executor.submit(func, headers=headers, url=url): func.__name__
+            for func, url in tasks
+        }
+
+        # As each task completes, gather the result or exception
+        for future in concurrent.futures.as_completed(future_to_task):
+            func_name = future_to_task[future]
             try:
-                fetch_and_upload_if_changed(api_url=bom_url,cos_filename=f"bom_{part_id}",headers=headers)
+                data = future.result()
+                results[func_name] = data
+                print(f"{func_name} extracted {len(data)} records.")
             except Exception as e:
-                print(f"Error processing BOM for part {part_id}: {e}")
-    any_data = False
-    for name, data in results.items():
-        if data:
-            print(f"Number of {name}: {len(data)}")
-            any_data = True
-    if not any_data:
-        print("****Up-to-date! No new data found.****")
+                print(f"Error running {func_name}: {e}")
+
+    # upload or further process the data here
+    # upload_to_s3(results['extract_list_ap_invoices'], "ap-invoices.json")
+
+    return results
 
 if __name__ == "__main__":
     run_all_extractions()
-
-    
