@@ -1,6 +1,9 @@
 # In your .gitignore file
 config.py
-ap_invoices_last_record.json
-ap_invoices_sorted_top10.jsona
-ap_invoices_sorted.json
 readtestfile.py
+__pycache__/
+extraction_json_outputs/
+extraction/
+.env*
+venv*
+ingestion_logs/
