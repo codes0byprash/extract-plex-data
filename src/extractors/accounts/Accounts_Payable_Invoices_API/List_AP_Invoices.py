@@ -106,20 +106,15 @@ def extract_list_ap_invoices(headers, url):
         if last_extracted:
             modified_date_begin = last_extracted
         else:
-            modified_date_begin = "2025-07-01T00:00:00.0000000Z"  # Full load fallback
+            modified_date_begin = "2025-07-14T00:00:00.0000000Z"  # Full load fallback
 
         modified_parsed_date, extra_digit = parse_date(modified_date_begin)
         end_parsed_date, _ = parse_date(modified_date_end)
         
         intervals = [(modified_parsed_date, end_parsed_date)]
         logging.info(f"Fetching from {modified_date_begin} to {modified_date_end}")
-
-
-        
+      
         max_workers = min(7,max(1,len(intervals) // 2))
-   
-        
-   
 
         all_ap_invoices = []
 
@@ -146,7 +141,7 @@ def extract_list_ap_invoices(headers, url):
 
         save_extraction_outputs(all_ap_invoices, log_dir, resource_name)
         # save_last_extraction_time(outer_logs_dir, modified_date_end)
-        # print(f"✅ Successfully fetched {len(all_ap_invoices)} AR invoices.")
+        # print(f"Successfully fetched {len(all_ap_invoices)} AR invoices.")
         return all_ap_invoices
 
     except Exception as e:

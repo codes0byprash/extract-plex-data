@@ -4,3 +4,6 @@ readtestfile.py
 __pycache__/
 extraction_json_outputs/
 extraction/
+.env*
+venv*
+ingestion_logs/
